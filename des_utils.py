@@ -35,8 +35,8 @@ def extract_colors(infiles):
         trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
         trig = np.any(trig_flags)
         MJDtrig = zMJD[trig_flags]
-        followupZ = np.any([((tnite - nite >= 3) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in zMJD])
-        followupI = np.any([((tnite - nite >= 3) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in iMJD])
+        followupZ = np.any([((tnite - nite >= 7) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in zMJD])
+        followupI = np.any([((tnite - nite >= 7) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in iMJD])
         detections[i] = followupZ or followupI   
         triggers[i] = trig
         if trig:
