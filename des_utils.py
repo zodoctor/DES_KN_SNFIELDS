@@ -21,8 +21,8 @@ def extract_colors(infiles):
         # make a list of all the nites there were observations and make a nitedictlist
         nitelist = np.unique(shallow['MJD'].astype('int'))
 
-        zobs, zMJD, zflux = obsinband(shallow, 'z') # identify whether there was a z observation on a nite and get its MJD
-        iobs, iMJD, iflux = obsinband(shallow, 'i') # identify whether there was an i observation on a nite and get its MJD
+        zobs, zMJD, zflux, zSNR = obsinband(shallow, 'z') # identify whether there was a z observation on a nite and get its MJD
+        iobs, iMJD, iflux, iSNR = obsinband(shallow, 'i') # identify whether there was an i observation on a nite and get its MJD
 
         zdet = zobs == 2
         idet = iobs == 2
@@ -56,6 +56,7 @@ def obsinband(obslist, band='i'):
 
     obsband = np.zeros(nnites, dtype='int')
     obsflux = np.empty(nnites)
+    obsSNR = np.empty(nnites)
 
     for x, nite in enumerate(nitelist):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
@@ -65,10 +66,18 @@ def obsinband(obslist, band='i'):
             sel = det & passed
             obsband[x] = 2
             obsflux[x] = np.mean(nite_obs[sel]['FLUXCAL'])
+	    try:
+	        obsSNR[x] = np.mean(nite_obs[sel]['SNR'])
+	    except ValueError:
+		pass
         else:
             obsband[x] = 1
             obsflux[x] = np.mean(nite_obs['FLUXCAL'])
-    return (obsband, nitelist, obsflux)
+	    try:
+                obsSNR[x] = np.mean(nite_obs['SNR'])
+            except ValueError:
+                pass
+    return (obsband, nitelist, obsflux, obsSNR)
 
 
 def common_nites(nitelist1, nitelist2):
