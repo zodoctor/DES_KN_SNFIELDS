@@ -8,6 +8,7 @@ def extract_colors(infiles):
     triggers = np.empty(nobjects, dtype='bool')
     colors = np.zeros(nobjects)
     ifluxes = np.zeros(nobjects)
+    detections = np.empty(nobjects,dtype='bool')
     for i, infile in enumerate(infiles):
         # get a list with all the values in the data table
         obs = des_io.parse_observations(infile)
@@ -24,18 +25,26 @@ def extract_colors(infiles):
         zobs, zMJD, zflux, zSNR = obsinband(shallow, 'z') # identify whether there was a z observation on a nite and get its MJD
         iobs, iMJD, iflux, iSNR = obsinband(shallow, 'i') # identify whether there was an i observation on a nite and get its MJD
 
-        zdet = zobs == 2
-        idet = iobs == 2
+        ztrig = zobs == 2
+        itrig = iobs == 2
+	zdet = zobs > 0
+	idet = iobs > 0
+	zSNRpass = zSNR >= 5
+	iSNRpass = iSNR >= 5
         zsel, isel = common_nites(zMJD, iMJD)
-        trig_flags = zdet[zsel] & idet[isel]
+        trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
         trig = np.any(trig_flags)
+	MJDtrig = zMJD[trig_flags]
+	followupZ = np.any([((tnite - nite >= 3) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in zMJD])
+	followupI = np.any([((tnite - nite >= 3) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in iMJD])
+	detections[i] = followupZ or followupI   
         triggers[i] = trig
         if trig:
-            zflux1 = zflux[zdet & zsel][0]
-            iflux1 = iflux[idet & isel][0]
+            zflux1 = zflux[ztrig & zsel][0]
+            iflux1 = iflux[itrig & isel][0]
             colors[i] = -2.5*(np.log10(iflux1)-np.log10(zflux1))
             ifluxes[i] = iflux[iobs > 0][-1] - iflux[iobs > 0][0]
-    return triggers, colors, ifluxes
+    return triggers, colors, ifluxes, np.sum(detections)
 
 
 def deepfield(obs):
