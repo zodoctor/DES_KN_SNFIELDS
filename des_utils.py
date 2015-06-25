@@ -5,14 +5,20 @@ import des_io
 def extract_colors(infiles):
     nobjects = len(infiles)
 
-    triggers = np.empty(nobjects, dtype='bool')
+    triggers = np.zeros(nobjects, dtype='bool')
     colors = np.zeros(nobjects)
     ifluxes = np.zeros(nobjects)
-    detections = np.empty(nobjects,dtype='bool')
+    detections = np.zeros(nobjects,dtype='bool')
+    SNIDset = set()
+    zcutflag = 1
+    allowmultitrig = 1
     for i, infile in enumerate(infiles):
         # get a list with all the values in the data table
         (obs,headerdict)= des_io.parse_observations(infile)
 
+        # skip files associated with objects w/ redshift > zmax
+        if zcutflag and photoZcut(headerdict):
+            continue
         # Separate deep and shallow fields
         deep_sel = deepfield(obs)
         deep = obs[deep_sel]
@@ -29,27 +35,51 @@ def extract_colors(infiles):
         itrig = iobs == 2
         zdet = zobs > 0
         idet = iobs > 0
-        zSNRpass = zSNR >= 5
-        iSNRpass = iSNR >= 5
+    
+        # get boolean selector list of common trigger nites for z and i observations       
         zsel, isel = common_nites(zMJD, iMJD)
-        trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
+
+        # if SNR is defined (only for sims) make sure at least one trigger obs has adequate SNR
+        if zSNR.any():
+            zSNRpass = zSNR >= 5
+            iSNRpass = iSNR >= 5
+            trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
+        else:
+            trig_flags = ztrig[zsel] & itrig[isel] 
         trig = np.any(trig_flags)
         MJDtrig = zMJD[trig_flags]
-        detections[i]=False
-        for tnite in MJDtrig:
-            nitesepz = zMJD - tnite
-            nitesepi = iMJD - tnite
-            detections[i] =  any(7 <= nitesep <= 7 for nitesep in nitesepz)  | any(7 <= nitesep <= 7 for nitesep in nitesepi)
-            if detections[i]:
-                break   
+
+        # cut out object if it has multiple triggers within maxtrignites
+        if (~allowmultitrig) and multitrig(MJDtrig):
+            continue
+
+        # record whether the trigger has a follow up observation for a full detection
+        detections[i] = followupdet(MJDtrig,zMJD,iMJD)
+        if detections[i]:
+            SNIDset.add(headerdict['SNID'])
         triggers[i] = trig
         if trig:
             zflux1 = zflux[ztrig & zsel][0]
             iflux1 = iflux[itrig & isel][0]
             colors[i] = -2.5*(np.log10(iflux1)-np.log10(zflux1))
             ifluxes[i] = iflux[iobs > 0][-1] - iflux[iobs > 0][0]
-    return triggers, colors, ifluxes, np.sum(detections)
+    return triggers, colors, ifluxes, np.sum(detections), SNIDset
 
+def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7):
+    detected = False
+    for tnite in MJDtrig:
+        nitesepz = zMJD-tnite
+        nitesepi = iMJD-tnite
+        detectedz = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepz)
+        detectedi = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepi)
+        detected = detectedz or detectedi
+        if detected:
+            break
+    return detected  
+
+def multitrig(MJDtrig,maxtrignites=10):
+    multitrigflag = any((((0-maxtrignites) < MJD1 - MJD2 < maxtrignites) and MJD1 != MJD2) for MJD1 in MJDtrig for MJD2 in MJDtrig)
+    return multitrigflag
 
 def deepfield(obs):
     sel = (obs['FIELD'] == 'X3') | (obs['FIELD'] == 'C3')
@@ -128,4 +158,11 @@ def within_cuts(obs, zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_up
     except ValueError:
         psf_sel = np.ones(len(obs), dtype='bool')
 
-    return zp_sel & psf_sel 
+    return zp_sel & psf_sel
+
+def photoZcut(headerdict,zmax=.1): 
+    if float(headerdict['REDSHIFT_HELIO']) > zmax:
+        photoZpass = True
+    else:
+        photoZpass = False        
+    return photoZpass

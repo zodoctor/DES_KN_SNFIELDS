@@ -98,10 +98,12 @@ def parse_header(inp):
     # get the header field names
     headerdict = dict()
     header = inp.readline().split()
-    while '#' not in header:
+    while (1==1):
         header = inp.readline().split()
         if not header:
             pass
+        elif header[0]=='#':
+            break
         else:
             headerdict[header[0][:-1]] = header[1]
     return header,headerdict
