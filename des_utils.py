@@ -10,8 +10,8 @@ def extract_colors(infiles):
     ifluxes = np.zeros(nobjects)
     detections = np.zeros(nobjects,dtype='bool')
     SNIDset = set()
-    zcutflag = 1
-    allowmultitrig = 1
+    zcutflag = 0
+    allowmultitrig = True
     for i, infile in enumerate(infiles):
         # get a list with all the values in the data table
         (obs,headerdict)= des_io.parse_observations(infile)
@@ -50,7 +50,7 @@ def extract_colors(infiles):
         MJDtrig = zMJD[trig_flags]
 
         # cut out object if it has multiple triggers within maxtrignites
-        if (~allowmultitrig) and multitrig(MJDtrig):
+        if ((not allowmultitrig) and multitrig(MJDtrig)):
             continue
 
         # record whether the trigger has a follow up observation for a full detection
