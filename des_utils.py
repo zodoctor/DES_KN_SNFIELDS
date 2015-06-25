@@ -11,7 +11,7 @@ def extract_colors(infiles):
     detections = np.empty(nobjects,dtype='bool')
     for i, infile in enumerate(infiles):
         # get a list with all the values in the data table
-        obs = des_io.parse_observations(infile)
+        (obs,headerdict)= des_io.parse_observations(infile)
 
         # Separate deep and shallow fields
         deep_sel = deepfield(obs)
@@ -35,9 +35,13 @@ def extract_colors(infiles):
         trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
         trig = np.any(trig_flags)
         MJDtrig = zMJD[trig_flags]
-        followupZ = np.any([((tnite - nite >= 7) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in zMJD])
-        followupI = np.any([((tnite - nite >= 7) and (tnite-nite <= 7)) for tnite in MJDtrig for nite in iMJD])
-        detections[i] = followupZ or followupI   
+        detections[i]=False
+        for tnite in MJDtrig:
+            nitesepz = zMJD - tnite
+            nitesepi = iMJD - tnite
+            detections[i] =  any(7 <= nitesep <= 7 for nitesep in nitesepz)  | any(7 <= nitesep <= 7 for nitesep in nitesepi)
+            if detections[i]:
+                break   
         triggers[i] = trig
         if trig:
             zflux1 = zflux[ztrig & zsel][0]

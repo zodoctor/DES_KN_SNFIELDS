@@ -80,12 +80,10 @@ dtypes = {
 
 def parse_observations(infile):
     with open(infile, 'r') as inp:
-        # Get the column headers
-        header = inp.readline().split()
+        (header,headerdict) = parse_header(inp)
+        # Prepare data type for struc. array
         while 'VARLIST:' not in header:
             header = inp.readline().split()
-
-        # Prepare data type for struc. array
         params = header
         cols = [i for i in range(len(params)) if params[i] in dtypes.keys()]
         dtype = [(params[col], dtypes[params[col]]) for col in cols]
@@ -94,5 +92,16 @@ def parse_observations(infile):
         filtered_inp = ifilter(lambda line: line.startswith('OBS:'), inp)
         obs = np.genfromtxt(filtered_inp, usecols=cols, dtype=dtype)
 
-    return obs 
+    return obs,headerdict
 
+def parse_header(inp):
+    # get the header field names
+    headerdict = dict()
+    header = inp.readline().split()
+    while '#' not in header:
+        header = inp.readline().split()
+        if not header:
+            pass
+        else:
+            headerdict[header[0][:-1]] = header[1]
+    return header,headerdict
