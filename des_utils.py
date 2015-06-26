@@ -62,17 +62,22 @@ def extract_colors(infiles):
             zflux1 = zflux[ztrig & zsel][0]
             iflux1 = iflux[itrig & isel][0]
             colors[i] = -2.5*(np.log10(iflux1)-np.log10(zflux1))
+            if np.isnan(colors[i]):
+                print zflux1,iflux1,headerdict['SNID']
             ifluxes[i] = iflux[iobs > 0][-1] - iflux[iobs > 0][0]
     return triggers, colors, ifluxes, np.sum(detections), SNIDset
 
-def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7):
+def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7,iandzfollowup = 1):
     detected = False
     for tnite in MJDtrig:
         nitesepz = zMJD-tnite
         nitesepi = iMJD-tnite
         detectedz = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepz)
         detectedi = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepi)
-        detected = detectedz or detectedi
+        if iandzfollowup:
+            detected = detectedz and detectedi
+        else:
+            detected = detectedz or detectedi
         if detected:
             break
     return detected  
