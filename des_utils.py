@@ -59,7 +59,7 @@ def extract_colors(infiles):
             SNIDset.add(headerdict['SNID'])
         triggers[i] = trig
         if trig:
-            zflux1 = zflux[ztrig & zsel][0]
+            zflux1 = zflux[ztrig & zsel][0] # this doesn't quite work if there are multiple triggers -- need fix
             iflux1 = iflux[itrig & isel][0]
             colors[i] = -2.5*(np.log10(iflux1)-np.log10(zflux1))
             if np.isnan(colors[i]):
@@ -127,6 +127,12 @@ def obsinband(obslist, band='i'):
                 pass
     return (obsband, nitelist, obsflux, obsSNR)
 
+def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
+    zcnites,icnites = common_nites(zMJD,iMJD)    
+    ztrig = zobs == 2
+    itrig = iobs == 2
+    trig = any((zMJDtrig - iMJDtrig <=1) for zMJDtrig in zMJD[ztrig] for iMJDtrig in iMJD[itrig])
+    return trig
 
 def common_nites(nitelist1, nitelist2):
     cnites = np.array([nite for nite in nitelist1 if np.any(nitelist2 == nite)])
