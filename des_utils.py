@@ -35,19 +35,19 @@ def extract_colors(infiles):
         itrig = iobs == 2
         zdet = zobs > 0
         idet = iobs > 0
-    
-        # get boolean selector list of common trigger nites for z and i observations       
-        zsel, isel = common_nites(zMJD, iMJD)
 
+        # get boolean selector list of common trigger nites for z and i observations
+        zsel, isel = common_nites(zMJD, iMJD, zobs, iobs)
+
+        trig_flags = ztrig[zsel] & itrig[isel]
         # if SNR is defined (only for sims) make sure at least one trigger obs has adequate SNR
         if zSNR.any():
             zSNRpass = zSNR >= 5
             iSNRpass = iSNR >= 5
-            trig_flags = ztrig[zsel] & itrig[isel] & (zSNRpass[zsel] | iSNRpass[isel])
-        else:
-            trig_flags = ztrig[zsel] & itrig[isel] 
+            trig_flags = trig_flags & (zSNRpass[zsel] | iSNRpass[isel])
+
         trig = np.any(trig_flags)
-        MJDtrig = zMJD[trig_flags]
+        MJDtrig = zMJD[zsel][trig_flags]
 
         # cut out object if it has multiple triggers within maxtrignites
         if ((not allowmultitrig) and multitrig(MJDtrig)):
@@ -80,7 +80,7 @@ def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7,iandzfollowup = 1):
             detected = detectedz or detectedi
         if detected:
             break
-    return detected  
+    return detected
 
 def multitrig(MJDtrig,maxtrignites=10):
     multitrigflag = any((((0-maxtrignites) < MJD1 - MJD2 < maxtrignites) and MJD1 != MJD2) for MJD1 in MJDtrig for MJD2 in MJDtrig)
@@ -92,8 +92,8 @@ def deepfield(obs):
 
 def obsinband(obslist, band='i'):
     # returns list with 0's for no observations in that band on that nite,
-    # 1's for if there is a near field observation in that band on that nite with all cuts/detects met, 2 if 
-    # there is a deep field obs on that nite with cuts/detects met.  3 and 4 signal that there was a 
+    # 1's for if there is a near field observation in that band on that nite with all cuts/detects met, 2 if
+    # there is a deep field obs on that nite with cuts/detects met.  3 and 4 signal that there was a
     # near or deep (resp.) observation that night but with no requirement on those observations passing
     # cuts and detects.  Also returns obsMJD which is a list of the MJD's of those observations in that band
     # -----------------------------------
@@ -110,37 +110,40 @@ def obsinband(obslist, band='i'):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
         det = detected(nite_obs)
         passed = within_cuts(nite_obs)
-        if np.any(det & passed):
-            sel = det & passed
+        sel = det & passed
+        if np.any(sel):
             obsband[x] = 2
             obsflux[x] = np.mean(nite_obs[sel]['FLUXCAL'])
-	    try:
-	        obsSNR[x] = np.mean(nite_obs[sel]['SNR'])
-	    except ValueError:
-		pass
+            try:
+                obsSNR[x] = np.mean(nite_obs[sel]['SNR'])
+            except ValueError:
+                pass
         else:
             obsband[x] = 1
             obsflux[x] = np.mean(nite_obs['FLUXCAL'])
-	    try:
+            try:
                 obsSNR[x] = np.mean(nite_obs['SNR'])
             except ValueError:
                 pass
     return (obsband, nitelist, obsflux, obsSNR)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
-    zcnites,icnites = common_nites(zMJD,iMJD)    
+    zcnites,icnites = common_nites(zMJD,iMJD)
     ztrig = zobs == 2
     itrig = iobs == 2
     trig = any((zMJDtrig - iMJDtrig <=1) for zMJDtrig in zMJD[ztrig] for iMJDtrig in iMJD[itrig])
     return trig
 
-def common_nites(nitelist1, nitelist2):
-    cnites = np.array([nite for nite in nitelist1 if np.any(nitelist2 == nite)])
+def common_nites(nitelist1, nitelist2, obs1=None, obs2=None):
+    goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
+    goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
+    cnites = np.intersect1d(goodnites1, goodnites2)
 
-    sel1 = np.array([True if nite in cnites else False for nite in nitelist1], dtype='bool')
-    sel2 = np.array([True if nite in cnites else False for nite in nitelist2], dtype='bool')
+    sel1 = np.in1d(nitelist1, cnites)
+    sel2 = np.in1d(nitelist2, cnites)
+
     return sel1, sel2
-    
+
 def detected(obs):
     # given an observation dictionary, check if that observation counts as a detection
     # ----------------------------------------------------------
@@ -151,7 +154,7 @@ def detected(obs):
     except ValueError:
         pass
 
-    return sel 
+    return sel
 
 def within_cuts(obs, zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0):
     # given an observation dictionary, check if that observation passes the cuts defined here
@@ -171,9 +174,9 @@ def within_cuts(obs, zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_up
 
     return zp_sel & psf_sel
 
-def photoZcut(headerdict,zmax=.1): 
+def photoZcut(headerdict,zmax=.1):
     if float(headerdict['REDSHIFT_HELIO']) > zmax:
         photoZpass = True
     else:
-        photoZpass = False        
+        photoZpass = False
     return photoZpass
