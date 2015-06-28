@@ -1,1 +1,10 @@
+*.egg-info
+*.egg
+*.EGG
+*.EGG-INFO
+bin
+build
+eggs
+dist
+*.pyc
 data
