@@ -1,6 +1,46 @@
 import numpy as np
 import des_io
 
+def get_all_obs(infiles):
+# parses data from each file into a structured array and adds it to a list.
+# Output: a list of structured arrays and a list of header dictionaries
+# corresponding to each object  
+    all_obs_list = []
+    all_headerdicts = []
+    for infile in infiles:
+        (obs,headerdict) = des_io.parse_observations(infile)
+        all_obs_list.append(obs)
+        all_headerdicts.append(headerdict)
+    return all_obs_list, all_headerdicts
+
+def cut_on_photoZ(all_headerdicts,zmax=0.1):
+# outputs a boolean selector list with true elements corresponding to objects
+# with photoZ greater than zmax
+    photoZcutsel = np.zeros(len(all_headerdicts),dtype='bool')
+    for i,headerdict in enumerate(all_headerdicts):
+        photoZcutsel[i] = photoZcut(headerdict,zmax)
+    return photoZcutsel
+ 
+def get_band_info(all_obs_list,band):
+# outputs a list with length of all_obs_list which contains data about a given band
+# for all objects in all_obs_list
+    bandinfolist = np.empty(len(all_obs_list),dtype=object)
+    for i,obs in enumerate(all_obs_list):
+        bandinfolist[i] = obsinband(obs,band)
+    return bandinfolist
+
+def trigger_selector(bandinfolist):
+# outputs a list of binary selector lists which have a true element for an event with 
+    bandtrig = np.zeros(len(bandinfolist),dtype=object)
+    for i,info in enumerate(bandinfolist):
+        bandtrig[i] = info[0] == 2
+    return bandtrig
+
+def existobs_selector(bandinfolist):
+    bandobs = np.zeros(len(bandinfolist),dtype=object)
+    for i,info in enumerate(bandinfolist):
+        bandobs[i] = info[0] > 0
+    return bandobs
 
 def extract_colors(infiles):
     nobjects = len(infiles)
@@ -96,7 +136,7 @@ def deepfield(obs):
     sel = (obs['FIELD'] == 'X3') | (obs['FIELD'] == 'C3')
     return sel
 
-def obsinband(obslist, band='i'):
+def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5):
     # returns list with 0's for no observations in that band on that nite,
     # 1's for if there is a near field observation in that band on that nite with all cuts/detects met, 2 if
     # there is a deep field obs on that nite with cuts/detects met.  3 and 4 signal that there was a
@@ -114,8 +154,8 @@ def obsinband(obslist, band='i'):
 
     for x, nite in enumerate(nitelist):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
-        det = detected(nite_obs)
-        passed = within_cuts(nite_obs)
+        det = detected(nite_obs,photprobmin)
+        passed = within_cuts(nite_obs,zp_lower, zp_upper, zp_fwhm_lower, zp_fwhm_upper)
         sel = det & passed
         if np.any(sel):
             obsband[x] = 2
@@ -150,13 +190,13 @@ def common_nites(nitelist1, nitelist2, obs1=None, obs2=None):
 
     return sel1, sel2
 
-def detected(obs):
+def detected(obs,photprobmin=0.5):
     # given an observation dictionary, check if that observation counts as a detection
     # ----------------------------------------------------------
     sel = obs['PHOTFLAG'] > 1
 
     try:
-        sel = sel & (obs['PHOTPROB'] >= 0.5)
+        sel = sel & (obs['PHOTPROB'] >= photprobmin)
     except ValueError:
         pass
 
