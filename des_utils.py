@@ -9,6 +9,7 @@ def extract_colors(infiles):
     colors = np.zeros(nobjects)
     ifluxes = np.zeros(nobjects)
     detections = np.zeros(nobjects,dtype='bool')
+    deltaT = []
     SNIDset = set()
     zcutflag = 0
     allowmultitrig = True
@@ -48,9 +49,10 @@ def extract_colors(infiles):
 
         trig = np.any(trig_flags)
         MJDtrig = zMJD[zsel][trig_flags]
-
+        if len(MJDtrig)>1: 
+            deltaT.append(MJDtrig.max() - MJDtrig.min())
         # cut out object if it has multiple triggers within maxtrignites
-        if ((not allowmultitrig) and multitrig(MJDtrig)):
+        if ((not allowmultitrig) and multitrig(MJDtrig,maximumtrignites)):
             continue
 
         # record whether the trigger has a follow up observation for a full detection
@@ -65,7 +67,7 @@ def extract_colors(infiles):
             if np.isnan(colors[i]):
                 print zflux1,iflux1,headerdict['SNID']
             ifluxes[i] = iflux[iobs > 0][-1] - iflux[iobs > 0][0]
-    return triggers, colors, ifluxes, np.sum(detections), SNIDset
+    return triggers, colors, ifluxes, np.sum(detections), SNIDset,np.array(deltaT)
 
 def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7,iandzfollowup = 1):
     detected = False
@@ -83,7 +85,11 @@ def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7,iandzfollowup = 1):
     return detected
 
 def multitrig(MJDtrig,maxtrignites=10):
-    multitrigflag = any((((0-maxtrignites) < MJD1 - MJD2 < maxtrignites) and MJD1 != MJD2) for MJD1 in MJDtrig for MJD2 in MJDtrig)
+    if len(MJDtrig) == 0:
+        multitrigflag = 1
+    else:   
+        trigdiff = MJDtrig.max() - MJDtrig.min()
+        multitrigflag = trigdiff>maxtrignites
     return multitrigflag
 
 def deepfield(obs):
