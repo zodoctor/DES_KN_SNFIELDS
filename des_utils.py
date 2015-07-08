@@ -22,6 +22,8 @@ def cut_on_photoZ(all_headerdicts,zmax=0.1):
     return photoZcutsel
 
 def get_depth_lists(all_obs_list):
+# takes in all_obs_list and sorts it based on deep and shallow fields
+# outputs shallow and deep lists with same length as all_obs_list
     deeplist = np.empty(len(all_obs_list),dtype=object)
     shallowlist = np.empty(len(all_obs_list),dtype=object)
     for i,obs in enumerate(all_obs_list):
@@ -39,13 +41,14 @@ def get_band_info(all_obs_list,band,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-
     return bandinfolist
 
 def trigger_selector(bandinfolist):
-# outputs a list of binary selector lists which have a true element for an event with 
+# outputs a list of binary selector lists which have a true element for a trigger nite 
     bandtrig = np.zeros(len(bandinfolist),dtype=object)
     for i,info in enumerate(bandinfolist):
         bandtrig[i] = info[0] == 2
     return bandtrig
 
 def existobs_selector(bandinfolist):
+# don't think this function is needed....
     bandobs = np.zeros(len(bandinfolist),dtype=object)
     for i,info in enumerate(bandinfolist):
         bandobs[i] = info[0] > 0
@@ -67,7 +70,9 @@ def common_trignite_selector(bandinfolist1,bandinfolist2,trigreq = 1):
             sel_list2[i] = sel2
     return sel_list1, sel_list2
 
-def get_SNR_selector(bandinfolist,SNRmin=5):
+def get_SNR_selector(bandinfolist,SNRmin=5.0):
+# outputs a list of binary selector lists that have a true element for each nite which has
+# an SNR that is > SNRmin in that band
     SNR_selector = np.zeros(len(bandinfolist),dtype=object)
     for i,info in enumerate(bandinfolist):
         if info[3].any():
@@ -75,6 +80,9 @@ def get_SNR_selector(bandinfolist,SNRmin=5):
     return SNR_selector
 
 def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SNR_sel1,SNR_sel2,SNRand=0):
+# outputs a trig_flags_list which is a list of binary selector lists with a true element for nites that have
+# a trigger and an SNR greater than SNRmin in at least one of the trigger observations.  If SNRand flag is 
+# set to 1, require both trigger observations have SNR greater than SNRmin 
     trig_flags_list = np.empty(len(trig_sel1),dtype=object)
     anytrigs = np.zeros(len(trig_sel1),dtype='bool')
     for i in range(0,len(trig_sel1)):
@@ -87,7 +95,20 @@ def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SN
             #trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
         anytrigs[i] = trig_flags_list[i].any()
     return trig_flags_list,anytrigs
-  
+
+def get_trig_MJD_list(band_info_list,trig_flags_list,trig_sel_list):
+# gives a list of lists of MJDs which had triggers
+    MJDtriglist = np.empty(len(trig_flags_list),dtype=object)
+    for i,trig in enumerate(trig_flags_list):
+        MJDtriglist[i] = band_info_list[i][1][trig_sel_list[i]][trig]
+    return MJDtriglist
+
+def get_detection_flags_list(MJDtriglist,bandinfolist1,bandinfolist2):
+# gives a binary selector list for each object that had a detection
+    detection_flags_list = np.zeros(len(MJDtriglist),dtype=object)
+    for i in range(0,len(MJDtriglist)):
+        detection_flags_list[i] = followupdet(MJDtriglist[i],bandinfolist1[i][1],bandinfolist2[i][1])
+    return detection_flags_list  
 
 def extract_colors(infiles):
     nobjects = len(infiles)
@@ -158,17 +179,18 @@ def extract_colors(infiles):
 
 def followupdet(MJDtrig,zMJD,iMJD,nitesepmin=7,nitesepmax=7,iandzfollowup = 1):
     detected = False
-    for tnite in MJDtrig:
-        nitesepz = zMJD-tnite
-        nitesepi = iMJD-tnite
-        detectedz = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepz)
-        detectedi = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepi)
-        if iandzfollowup:
-            detected = detectedz and detectedi
-        else:
-            detected = detectedz or detectedi
-        if detected:
-            break
+    if MJDtrig.size > 0:
+        for tnite in MJDtrig:
+            nitesepz = zMJD-tnite
+            nitesepi = iMJD-tnite
+            detectedz = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepz)
+            detectedi = any(nitesepmin <= nitesep <= nitesepmax for nitesep in nitesepi)
+            if iandzfollowup:
+                detected = detectedz and detectedi
+            else:
+                detected = detectedz or detectedi
+            if detected:
+                break
     return detected
 
 def multitrig(MJDtrig,maxtrignites=10):
