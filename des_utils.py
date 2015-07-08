@@ -20,13 +20,22 @@ def cut_on_photoZ(all_headerdicts,zmax=0.1):
     for i,headerdict in enumerate(all_headerdicts):
         photoZcutsel[i] = photoZcut(headerdict,zmax)
     return photoZcutsel
+
+def get_depth_lists(all_obs_list):
+    deeplist = np.empty(len(all_obs_list),dtype=object)
+    shallowlist = np.empty(len(all_obs_list),dtype=object)
+    for i,obs in enumerate(all_obs_list):
+        deep_sel = deepfield(obs)
+        deeplist[i] = obs[deep_sel]
+        shallowlist[i] = obs[~deep_sel]
+    return shallowlist, deeplist
  
-def get_band_info(all_obs_list,band):
+def get_band_info(all_obs_list,band,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5):
 # outputs a list with length of all_obs_list which contains data about a given band
 # for all objects in all_obs_list
     bandinfolist = np.empty(len(all_obs_list),dtype=object)
     for i,obs in enumerate(all_obs_list):
-        bandinfolist[i] = obsinband(obs,band)
+        bandinfolist[i] = obsinband(obs,band,zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
     return bandinfolist
 
 def trigger_selector(bandinfolist):
@@ -41,6 +50,44 @@ def existobs_selector(bandinfolist):
     for i,info in enumerate(bandinfolist):
         bandobs[i] = info[0] > 0
     return bandobs
+
+def common_trignite_selector(bandinfolist1,bandinfolist2,trigreq = 1):
+# returns a list of binary selector lists which give common trigger nites
+    sel_list1 = np.empty(len(bandinfolist1),dtype=object)
+    sel_list2 = np.empty(len(bandinfolist1),dtype=object)
+    if trigreq:
+        for i in range(0,len(bandinfolist1)):
+            sel1, sel2 = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0])
+            sel_list1[i] = sel1
+            sel_list2[i] = sel2
+    else:
+        for i in range(0,len(bandinfolist1)):
+            sel1, sel2 = common_nites(bandinfolist1[i][1],bandinfolist2[i][1])
+            sel_list1[i] = sel1
+            sel_list2[i] = sel2
+    return sel_list1, sel_list2
+
+def get_SNR_selector(bandinfolist,SNRmin=5):
+    SNR_selector = np.zeros(len(bandinfolist),dtype=object)
+    for i,info in enumerate(bandinfolist):
+        if info[3].any():
+            SNR_selector[i] = info[3] >= SNRmin
+    return SNR_selector
+
+def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SNR_sel1,SNR_sel2,SNRand=0):
+    trig_flags_list = np.empty(len(trig_sel1),dtype=object)
+    anytrigs = np.zeros(len(trig_sel1),dtype='bool')
+    for i in range(0,len(trig_sel1)):
+        if np.any(SNR_sel1[i]) and SNRand:
+            trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]] & (SNR_sel1[i][common_trig_sel1[i]] & SNR_sel2[i][common_trig_sel2[i]])
+        elif np.any(SNR_sel1[i]):
+            trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]] & (SNR_sel1[i][common_trig_sel1[i]] | SNR_sel2[i][common_trig_sel2[i]])
+        else:
+            continue
+            #trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
+        anytrigs[i] = trig_flags_list[i].any()
+    return trig_flags_list,anytrigs
+  
 
 def extract_colors(infiles):
     nobjects = len(infiles)
