@@ -79,20 +79,22 @@ def get_SNR_selector(bandinfolist,SNRmin=5.0):
             SNR_selector[i] = info[3] >= SNRmin
     return SNR_selector
 
-def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SNR_sel1,SNR_sel2,SNRand=0):
+def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SNR_sel1=None,SNR_sel2=None,SNRand=0):
 # outputs a trig_flags_list which is a list of binary selector lists with a true element for nites that have
 # a trigger and an SNR greater than SNRmin in at least one of the trigger observations.  If SNRand flag is 
 # set to 1, require both trigger observations have SNR greater than SNRmin 
     trig_flags_list = np.empty(len(trig_sel1),dtype=object)
     anytrigs = np.zeros(len(trig_sel1),dtype='bool')
     for i in range(0,len(trig_sel1)):
-        if np.any(SNR_sel1[i]) and SNRand:
+        if SNR_sel1 is None and SNR_sel2 is None:
+            trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
+        elif np.any(SNR_sel1[i]) and SNRand:
             trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]] & (SNR_sel1[i][common_trig_sel1[i]] & SNR_sel2[i][common_trig_sel2[i]])
         elif np.any(SNR_sel1[i]):
             trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]] & (SNR_sel1[i][common_trig_sel1[i]] | SNR_sel2[i][common_trig_sel2[i]])
         else:
             continue
-            #trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
+            trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
         anytrigs[i] = trig_flags_list[i].any()
     return trig_flags_list,anytrigs
 
