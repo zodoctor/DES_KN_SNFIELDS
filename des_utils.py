@@ -275,7 +275,7 @@ def common_nites(nitelist1, nitelist2, obs1=None, obs2=None,SNRsel1=None,SNRsel2
             goodnites2SNR = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
             cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
-            cnites = np.intersect1d(cnitesSNR1,cnitesSNR2)
+            cnites = np.union1d(cnitesSNR1,cnitesSNR2)
         sel1 = np.in1d(nitelist1, cnites)
         sel2 = np.in1d(nitelist2, cnites)
     else:
@@ -300,7 +300,7 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
             goodnites2SNR = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
             cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
-            cnites = np.intersect1d(cnitesSNR1,cnitesSNR2)
+            cnites = np.union1d(cnitesSNR1,cnitesSNR2)
             sel1 = sel1 | np.in1d(nitelist1,cnites-lag)
             sel2 = sel2 | np.in1d(nitelist2,cnites)
     print np.sum(sel1),np.sum(sel2)
