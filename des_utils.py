@@ -54,21 +54,30 @@ def existobs_selector(bandinfolist):
         bandobs[i] = info[0] > 0
     return bandobs
 
-def common_trignite_selector(bandinfolist1,bandinfolist2,trigreq = 1):
+def common_trignite_selector(bandinfolist1,bandinfolist2,SNRsel1,SNRsel2,trigreq = 1,deep=0,sim=1):
 # returns a list of binary selector lists which give common trigger nites
     sel_list1 = np.empty(len(bandinfolist1),dtype=object)
     sel_list2 = np.empty(len(bandinfolist1),dtype=object)
-    if trigreq:
+    cMJDlist = np.empty(len(bandinfolist1),dtype=object)
+    if trigreq==1 and sim==1:
         for i in range(0,len(bandinfolist1)):
-            sel1, sel2 = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0])
+            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],SNRsel1[i],SNRsel2[i],deep)
             sel_list1[i] = sel1
             sel_list2[i] = sel2
+            cMJDlist[i] = cnites
+    elif trigreq==1 and sim==0:
+        for i in range(0,len(bandinfolist1)):
+            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],None,None,deep)
+            sel_list1[i] = sel1
+            sel_list2[i] = sel2
+            cMJDlsit[i] = cnites
     else:
         for i in range(0,len(bandinfolist1)):
-            sel1, sel2 = common_nites(bandinfolist1[i][1],bandinfolist2[i][1])
+            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1])
             sel_list1[i] = sel1
             sel_list2[i] = sel2
-    return sel_list1, sel_list2
+            cMJDlist[i] = cnites
+    return sel_list1, sel_list2,cMJDlist
 
 def get_SNR_selector(bandinfolist,SNRmin=5.0):
 # outputs a list of binary selector lists that have a true element for each nite which has
@@ -94,9 +103,10 @@ def get_trig_flags_list(trig_sel1,trig_sel2,common_trig_sel1,common_trig_sel2,SN
             trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]] & (SNR_sel1[i][common_trig_sel1[i]] | SNR_sel2[i][common_trig_sel2[i]])
         else:
             continue
-            trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
+            #trig_flags_list[i] = trig_sel1[i][common_trig_sel1[i]] & trig_sel2[i][common_trig_sel2[i]]
         anytrigs[i] = trig_flags_list[i].any()
     return trig_flags_list,anytrigs
+
 
 def get_trig_MJD_list(band_info_list,trig_flags_list,trig_sel_list):
 # gives a list of lists of MJDs which had triggers
@@ -105,11 +115,12 @@ def get_trig_MJD_list(band_info_list,trig_flags_list,trig_sel_list):
         MJDtriglist[i] = band_info_list[i][1][trig_sel_list[i]][trig]
     return MJDtriglist
 
-def get_detection_flags_list(MJDtriglist,bandinfolist1,bandinfolist2):
+
+def get_detection_flags_list(MJDtriglist,bandinfolist1,bandinfolist2,nitesepmin=7,nitesepmax=7,iandzfollowup=1):
 # gives a binary selector list for each object that had a detection
     detection_flags_list = np.zeros(len(MJDtriglist),dtype=object)
     for i in range(0,len(MJDtriglist)):
-        detection_flags_list[i] = followupdet(MJDtriglist[i],bandinfolist1[i][1],bandinfolist2[i][1])
+        detection_flags_list[i] = followupdet(MJDtriglist[i],bandinfolist1[i][1],bandinfolist2[i][1],nitesepmin,nitesepmax,iandzfollowup)
     return detection_flags_list  
 
 def extract_colors(infiles):
@@ -148,7 +159,7 @@ def extract_colors(infiles):
         idet = iobs > 0
 
         # get boolean selector list of common trigger nites for z and i observations
-        zsel, isel = common_nites(zMJD, iMJD, zobs, iobs)
+        zsel, isel,cnites = common_nites(zMJD, iMJD, zobs, iobs)
 
         trig_flags = ztrig[zsel] & itrig[isel]
         # if SNR is defined (only for sims) make sure at least one trigger obs has adequate SNR
@@ -251,16 +262,50 @@ def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
     trig = any((zMJDtrig - iMJDtrig <=1) for zMJDtrig in zMJD[ztrig] for iMJDtrig in iMJD[itrig])
     return trig
 
-def common_nites(nitelist1, nitelist2, obs1=None, obs2=None):
-    goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
-    goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
-    cnites = np.intersect1d(goodnites1, goodnites2)
+def common_nites(nitelist1, nitelist2, obs1=None, obs2=None,SNRsel1=None,SNRsel2=None,deep=0):
+    if deep == 0:
+        if SNRsel1 == None:
+            goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
+            goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
+            cnites = np.intersect1d(goodnites1, goodnites2)
+        else:
+            goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
+            goodnites1SNR = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1])
+            goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
+            goodnites2SNR = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
+            cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
+            cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
+            cnites = np.intersect1d(cnitesSNR1,cnitesSNR2)
+        sel1 = np.in1d(nitelist1, cnites)
+        sel2 = np.in1d(nitelist2, cnites)
+    else:
+        sel1, sel2,cnites = common_nites_deep(nitelist1,nitelist2,obs1,obs2,SNRsel1,SNRsel2)
+    return sel1, sel2,cnites
 
-    sel1 = np.in1d(nitelist1, cnites)
-    sel2 = np.in1d(nitelist2, cnites)
-
-    return sel1, sel2
-
+def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRsel2=None):
+    sel1 = np.zeros(len(nitelist1),dtype='bool')
+    sel2 = np.zeros(len(nitelist2),dtype='bool')
+    if SNRsel1 == None:
+        for lag in [-1,0,1]:
+            goodnites1 = nitelist1 if obs1 is None else (nitelist1[obs1 == 2]+lag)
+            goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
+            cnites = np.intersect1d(goodnites1,goodnites2)
+            sel1 = sel1 | np.in1d(nitelist1,cnites-lag)
+            sel2 = sel2 | np.in1d(nitelist2,cnites)
+    else:
+        for lag in [-1,0,1]:
+            goodnites1 = nitelist1 if obs1 is None else (nitelist1[obs1 == 2]+lag)
+            goodnites1SNR = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1]+lag)
+            goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
+            goodnites2SNR = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
+            cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
+            cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
+            cnites = np.intersect1d(cnitesSNR1,cnitesSNR2)
+            sel1 = sel1 | np.in1d(nitelist1,cnites-lag)
+            sel2 = sel2 | np.in1d(nitelist2,cnites)
+    print np.sum(sel1),np.sum(sel2)
+    return sel1, sel2,cnites
+        
 def detected(obs,photprobmin=0.5):
     # given an observation dictionary, check if that observation counts as a detection
     # ----------------------------------------------------------
