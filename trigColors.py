@@ -47,4 +47,5 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
             anytrigs[i] = np.any(zsellist[i]) and np.any(isellist[i])
     dict1['colors'] = colors
     dict1['trigs'] = anytrigs
+    dict1['headers'] = theheaders
     return dict1

@@ -321,8 +321,8 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
             cnites_intersect = np.union1d(cnitesSNR1,cnitesSNR2)
             cnites = np.union1d(cnites,cnites_intersect)
-            sel1 = sel1 | np.in1d(nitelist1,cnites-lag)
-            sel2 = sel2 | np.in1d(nitelist2,cnites)
+            sel1 = (sel1 | np.in1d(nitelist1,cnites-lag)) & (obs1 == 2)
+            sel2 = (sel2 | np.in1d(nitelist2,cnites)) & (obs2 == 2)
     return sel1, sel2,cnites
         
 def detected(obs,photprobmin=0.5):
