@@ -262,14 +262,14 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
             try:
                 obsSNR[x] = np.mean(nite_obs[sel]['SNR'])
             except ValueError:
-                pass
+                obsSNR[x] = np.mean(nite_obs[sel]['FLUXCAL'])/np.mean(nite_obs[sel]['FLUXCALERR'])
         else:
             obsband[x] = 1
             obsflux[x] = np.mean(nite_obs['FLUXCAL'])
             try:
                 obsSNR[x] = np.mean(nite_obs['SNR'])
             except ValueError:
-                pass
+                obsSNR[x] = np.mean(nite_obs[sel]['FLUXCAL'])/np.mean(nite_obs[sel]['FLUXCALERR'])
     return (obsband, nitelist, obsflux, obsSNR)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):

@@ -22,7 +22,7 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
     ibandinfo = des_utils.get_band_info(depth_list,'i',zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
     dict1['zbandinfo']=zbandinfo
     dict1['ibandinfo']=ibandinfo
-    if datatype == 'sim' and useSNRflag==1:
+    if useSNRflag==1:
         zSNR_sel = des_utils.get_SNR_selector(zbandinfo)
         iSNR_sel = des_utils.get_SNR_selector(ibandinfo)
         if fieldtype == 'shallow':
