@@ -123,6 +123,23 @@ def get_detection_flags_list(MJDtriglist,bandinfolist1,bandinfolist2,nitesepmin=
         detection_flags_list[i] = followupdet(MJDtriglist[i],bandinfolist1[i][1],bandinfolist2[i][1],nitesepmin,nitesepmax,iandzfollowup)
     return detection_flags_list  
 
+def get_detection_info(MJDtriglist,bandinfolist,nitesepmin=7,nitesepmax=7,iandzfollowup=1):
+    detection_fluxes = np.empty(len(MJDtriglist),dtype='float')
+    detection_fluxes[:] = np.NAN
+    detection_MJD = np.empty(len(MJDtriglist),dtype='int')
+    detection_MJD[:] = np.NAN
+    detection_flags_list = np.zeros(len(MJDtriglist),dtype='bool')
+    for i in range(0,len(MJDtriglist)):
+        if MJDtriglist[i].size != 0:
+            detection_nites_min_sel = nitesepmin <= (bandinfolist[i][1]-MJDtriglist[i][-1])
+            detection_nites_max_sel = (bandinfolist[i][1]-MJDtriglist[i][-1]) <= nitesepmax
+            detection_nites_sel = detection_nites_min_sel & detection_nites_max_sel
+            if np.any(detection_nites_sel):
+                detection_flags_list[i] = np.any(detection_nites_sel)
+                detection_MJD[i] = bandinfolist[i][1][detection_nites_sel][0]
+                detection_fluxes[i] = bandinfolist[i][2][detection_nites_sel][0]
+    return detection_fluxes, detection_MJD,detection_flags_list
+
 def extract_colors(infiles):
     nobjects = len(infiles)
 
