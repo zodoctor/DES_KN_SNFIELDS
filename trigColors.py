@@ -20,8 +20,12 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
     dict1['depthlist'] = depth_list
     zbandinfo = des_utils.get_band_info(depth_list,'z',zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
     ibandinfo = des_utils.get_band_info(depth_list,'i',zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
+    gbandinfo = des_utils.get_band_info(depth_list,'g',zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
+    rbandinfo = des_utils.get_band_info(depth_list,'r',zp_lower,zp_upper, zp_fwhm_lower, zp_fwhm_upper,photprobmin)
     dict1['zbandinfo']=zbandinfo
     dict1['ibandinfo']=ibandinfo
+    dict1['gbandinfo']=gbandinfo
+    dict1['rbandinfo']=rbandinfo
     if useSNRflag==1:
         zSNR_sel = des_utils.get_SNR_selector(zbandinfo)
         iSNR_sel = des_utils.get_SNR_selector(ibandinfo)
@@ -41,8 +45,8 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
     anytrigs = np.zeros(len(zbandinfo),dtype='bool')
     for i in range(0,len(zbandinfo)):
         if np.any(zsellist[i]):
-            imag = -2.5*np.log(ibandinfo[i][2][isellist[i]][0])
-            zmag = -2.5*np.log(zbandinfo[i][2][zsellist[i]][0])
+            imag = -2.5*np.log10(ibandinfo[i][2][isellist[i]][0])
+            zmag = -2.5*np.log10(zbandinfo[i][2][zsellist[i]][0])
             colors[i] = imag - zmag
             anytrigs[i] = np.any(zsellist[i]) and np.any(isellist[i])
     dict1['colors'] = colors
