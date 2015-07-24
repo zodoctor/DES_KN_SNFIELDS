@@ -45,6 +45,8 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
     anytrigs = np.zeros(len(zbandinfo),dtype='bool')
     for i in range(0,len(zbandinfo)):
         if np.any(zsellist[i]):
+            #imag = -2.5*np.log10(ibandinfo[i][2][isellist[i]][0])
+            #zmag = -2.5*np.log10(zbandinfo[i][2][zsellist[i]][0])
             imag = -2.5*np.log10(ibandinfo[i][2][isellist[i]][0])
             zmag = -2.5*np.log10(zbandinfo[i][2][zsellist[i]][0])
             colors[i] = imag - zmag

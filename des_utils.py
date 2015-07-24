@@ -257,19 +257,27 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
         passed = within_cuts(nite_obs,zp_lower, zp_upper, zp_fwhm_lower, zp_fwhm_upper)
         sel = det & passed
         if np.any(sel):
-            obsband[x] = 2
-            obsflux[x] = np.mean(nite_obs[sel]['FLUXCAL'])
             try:
-                obsSNR[x] = np.mean(nite_obs[sel]['SNR'])
+                SNRmax = np.max(nite_obs[sel]['SNR'])
+                SNRsel = nite_obs[sel]['SNR'] >= SNRmax
             except ValueError:
-                obsSNR[x] = np.mean(nite_obs[sel]['FLUXCAL'])/np.mean(nite_obs[sel]['FLUXCALERR'])
+                obsSNRlist = np.absolute(np.divide(nite_obs[sel]['FLUXCAL'],nite_obs[sel]['FLUXCALERR']))
+                SNRmax = np.max(obsSNRlist)
+                SNRsel = obsSNRlist >= SNRmax
+            obsband[x] = 2
+            obsflux[x] = nite_obs[sel]['FLUXCAL'][SNRsel][0]
+            obsSNR[x] = SNRmax
         else:
             obsband[x] = 1
-            obsflux[x] = np.mean(nite_obs['FLUXCAL'])
             try:
-                obsSNR[x] = np.mean(nite_obs['SNR'])
-            except ValueError:
-                obsSNR[x] = np.mean(nite_obs[sel]['FLUXCAL'])/np.mean(nite_obs[sel]['FLUXCALERR'])
+                SNRmax = np.max(nite_obs['SNR'])
+                SNRsel = nite_obs['SNR'] >= SNRmax
+            except:
+                obsSNRlist = np.absolute(np.divide(nite_obs['FLUXCAL'],nite_obs['FLUXCALERR']))
+                SNRmax = np.max(obsSNRlist)
+                SNRsel = obsSNRlist >= SNRmax
+            obsflux[x] = nite_obs['FLUXCAL'][SNRsel][0]
+            obsSNR[x] = SNRmax
     return (obsband, nitelist, obsflux, obsSNR)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
