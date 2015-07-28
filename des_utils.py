@@ -250,12 +250,13 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
     obsband = np.zeros(nnites, dtype='int')
     obsflux = np.empty(nnites)
     obsSNR = np.empty(nnites)
-
+    obsfluxcalerr = np.empty(nnites)
     for x, nite in enumerate(nitelist):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
         det = detected(nite_obs,photprobmin)
         passed = within_cuts(nite_obs,zp_lower, zp_upper, zp_fwhm_lower, zp_fwhm_upper)
         sel = det & passed
+### When there are multiple triggers on the same night in the same band, we choose the one with the better SNR.  If the SNRs are the same, we pick the first one in the list to get the flux.
         if np.any(sel):
             try:
                 SNRmax = np.max(nite_obs[sel]['SNR'])
@@ -266,6 +267,7 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
                 SNRsel = obsSNRlist >= SNRmax
             obsband[x] = 2
             obsflux[x] = nite_obs[sel]['FLUXCAL'][SNRsel][0]
+            obsfluxcalerr[x] = nite_obs[sel]['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
         else:
             obsband[x] = 1
@@ -277,8 +279,9 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
                 SNRmax = np.max(obsSNRlist)
                 SNRsel = obsSNRlist >= SNRmax
             obsflux[x] = nite_obs['FLUXCAL'][SNRsel][0]
+            obsfluxcalerr[x] = nite_obs['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
-    return (obsband, nitelist, obsflux, obsSNR)
+    return (obsband, nitelist, obsflux, obsSNR,obsfluxcalerr)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
     zcnites,icnites = common_nites(zMJD,iMJD)
