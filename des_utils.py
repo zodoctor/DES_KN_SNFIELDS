@@ -367,7 +367,7 @@ def within_cuts(obs, zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_up
     return zp_sel & psf_sel
 
 def photoZcut(headerdict,zmax=.1):
-    if float(headerdict['REDSHIFT_HELIO']) > zmax:
+    if (float(headerdict['HOSTGAL_PHOTOZ']) > zmax):
         photoZpass = True
     else:
         photoZpass = False
