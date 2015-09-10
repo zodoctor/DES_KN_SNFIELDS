@@ -13,6 +13,28 @@ def get_all_obs(infiles):
         all_headerdicts.append(headerdict)
     return all_obs_list, all_headerdicts
 
+def hostgalAssociate(infile=None,headerlist=None,datatype='sim'):
+    if (infile==None) and (headerlist==None):
+        print 'you need either a file for random hostgal association or a headerlist'
+    elif (headerlist!=None) and (infile!=None): 
+        readfile = np.genfromtxt(infile,names=True,dtype=float)
+        randomindices = np.random.randint(0,len(readfile),size=len(headerlist))
+        DLR = readfile['DLR'][randomindices]
+        SEP = readfile['SEP'][randomindices]
+        ZGAL_MATCH = readfile['ZGAL_MATCH'][randomindices]
+        return ZGAL_MATCH, DLR, SEP
+    elif (infile==None) and (datatype=='sim'):
+        HOSTGAL_PHOTOZ = np.array([float(eye['HOSTGAL_PHOTOZ']) for i,eye in enumerate(headerlist)])
+        SEP = np.array([float(eye['HOSTGAL_SNSEP']) for i,eye in enumerate(headerlist)])
+        return HOSTGAL_PHOTOZ,SEP
+    elif (infile==None) and (datatype=='data'):
+        HOSTGAL_PHOTOZ = np.array([float(eye['HOSTGAL_PHOTOZ']) for i,eye in enumerate(headerlist)])
+        DLR = np.array([float(eye['PRIVATE(DES_hostgal_dlr)']) for i,eye in enumerate(headerlist)])
+        SEP = np.array([float(eye['HOSTGAL_SNSEP']) for i,eye in enumerate(headerlist)])
+        return HOSTGAL_PHOTOZ,DLR,SEP 
+    else:
+        print 'something went wrong...try again?'
+
 def cut_on_photoZ(all_headerdicts,zmax=0.1):
 # outputs a boolean selector list with true elements corresponding to objects
 # with photoZ greater than zmax
@@ -331,7 +353,8 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
             cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
             cnites_intersect = np.union1d(cnitesSNR1,cnitesSNR2)
-            cnites = np.union1d(cnites,cnites_intersect)
+            #cnites = np.union1d(cnites,cnites_intersect)
+            cnites = np.union1d(np.union1d(cnites,cnites_intersect),np.union1d(cnites,cnites_intersect-lag))
             sel1 = (sel1 | np.in1d(nitelist1,cnites-lag)) & (obs1 == 2)
             sel2 = (sel2 | np.in1d(nitelist2,cnites)) & (obs2 == 2)
     return sel1, sel2,cnites

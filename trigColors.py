@@ -6,7 +6,7 @@ import des_io
 
 import matplotlib.pyplot as plt
 
-def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5):
+def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5,maxtrignite=20):
     dict1 = dict()
     files = glob(path)
     thelist,theheaders = des_utils.get_all_obs(files)
@@ -58,7 +58,7 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
                 nitediff[i] = -1
             else:
                 nitediff[i] = cnites[i].max() - cnites[i].min()
-    multitrig = nitediff <= 20
+    multitrig = nitediff <= maxtrignite
     dict1['colors'] = colors
     dict1['trigs'] = anytrigs
     dict1['headers'] = theheaders
