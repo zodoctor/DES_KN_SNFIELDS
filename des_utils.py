@@ -272,6 +272,7 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
     obsband = np.zeros(nnites, dtype='int')
     obsflux = np.empty(nnites)
     obsSNR = np.empty(nnites)
+    obsField = np.empty(nnites,dtype=object)
     obsfluxcalerr = np.empty(nnites)
     for x, nite in enumerate(nitelist):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
@@ -291,6 +292,7 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
             obsflux[x] = nite_obs[sel]['FLUXCAL'][SNRsel][0]
             obsfluxcalerr[x] = nite_obs[sel]['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
+            obsField[x] = nite_obs[sel]['FIELD'][SNRsel][0]
         else:
             obsband[x] = 1
             try:
@@ -303,7 +305,8 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
             obsflux[x] = nite_obs['FLUXCAL'][SNRsel][0]
             obsfluxcalerr[x] = nite_obs['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
-    return (obsband, nitelist, obsflux, obsSNR,obsfluxcalerr)
+            obsField[x] = nite_obs['FIELD'][SNRsel][0]
+    return (obsband, nitelist, obsflux, obsSNR,obsfluxcalerr,obsField)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
     zcnites,icnites = common_nites(zMJD,iMJD)
