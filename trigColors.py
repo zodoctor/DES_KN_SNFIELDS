@@ -6,7 +6,7 @@ import des_io
 
 import matplotlib.pyplot as plt
 
-def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5,maxtrignite=20):
+def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_upper=2.0,photprobmin=0.5,maxtrignite=20,SNRand=0):
     dict1 = dict()
     files = glob(path)
     thelist,theheaders = des_utils.get_all_obs(files)
@@ -30,9 +30,9 @@ def trigColors(path,datatype,fieldtype,useSNRflag=1,zmax=0.1,zp_lower=30.5,zp_up
         zSNR_sel = des_utils.get_SNR_selector(zbandinfo)
         iSNR_sel = des_utils.get_SNR_selector(ibandinfo)
         if fieldtype == 'shallow':
-            zsellist,isellist,cnites = des_utils.common_trignite_selector(zbandinfo,ibandinfo,zSNR_sel,iSNR_sel,1,0,1)
+            zsellist,isellist,cnites = des_utils.common_trignite_selector(zbandinfo,ibandinfo,zSNR_sel,iSNR_sel,1,0,1,SNRand=SNRand)
         elif fieldtype == 'deep':
-            zsellist,isellist,cnites = des_utils.common_trignite_selector(zbandinfo,ibandinfo,zSNR_sel,iSNR_sel,1,1,1)
+            zsellist,isellist,cnites = des_utils.common_trignite_selector(zbandinfo,ibandinfo,zSNR_sel,iSNR_sel,1,1,1,SNRand=SNRand)
     else:
         if fieldtype == 'shallow':
             zsellist,isellist,cnites = des_utils.common_trignite_selector(zbandinfo,ibandinfo,None,None,1,0,0)

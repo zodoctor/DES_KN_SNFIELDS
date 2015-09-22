@@ -76,20 +76,20 @@ def existobs_selector(bandinfolist):
         bandobs[i] = info[0] > 0
     return bandobs
 
-def common_trignite_selector(bandinfolist1,bandinfolist2,SNRsel1,SNRsel2,trigreq = 1,deep=0,sim=1):
+def common_trignite_selector(bandinfolist1,bandinfolist2,SNRsel1,SNRsel2,trigreq = 1,deep=0,sim=1,SNRand=0):
 # returns a list of binary selector lists which give common trigger nites
     sel_list1 = np.empty(len(bandinfolist1),dtype=object)
     sel_list2 = np.empty(len(bandinfolist1),dtype=object)
     cMJDlist = np.empty(len(bandinfolist1),dtype=object)
     if trigreq==1 and sim==1:
         for i in range(0,len(bandinfolist1)):
-            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],SNRsel1[i],SNRsel2[i],deep)
+            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],SNRsel1[i],SNRsel2[i],deep,SNRand=SNRand)
             sel_list1[i] = sel1
             sel_list2[i] = sel2
             cMJDlist[i] = cnites
     elif trigreq==1 and sim==0:
         for i in range(0,len(bandinfolist1)):
-            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],None,None,deep)
+            sel1, sel2,cnites = common_nites(bandinfolist1[i][1],bandinfolist2[i][1],bandinfolist1[i][0],bandinfolist2[i][0],None,None,deep,SNRand=SNRand)
             sel_list1[i] = sel1
             sel_list2[i] = sel2
             cMJDlist[i] = cnites
@@ -315,13 +315,13 @@ def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
     trig = any((zMJDtrig - iMJDtrig <=1) for zMJDtrig in zMJD[ztrig] for iMJDtrig in iMJD[itrig])
     return trig
 
-def common_nites(nitelist1, nitelist2, obs1=None, obs2=None,SNRsel1=None,SNRsel2=None,deep=0):
+def common_nites(nitelist1, nitelist2, obs1=None, obs2=None,SNRsel1=None,SNRsel2=None,deep=0,SNRand=0):
     if deep == 0:
         if SNRsel1 == None:
             goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
             goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
             cnites = np.intersect1d(goodnites1, goodnites2)
-        else:
+        elif SNRand==0:
             goodnites1 = nitelist1 if obs1 is None else nitelist1[obs1 == 2]
             goodnites1SNR = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1])
             goodnites2 = nitelist2 if obs2 is None else nitelist2[obs2 == 2]
@@ -329,13 +329,17 @@ def common_nites(nitelist1, nitelist2, obs1=None, obs2=None,SNRsel1=None,SNRsel2
             cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
             cnites = np.union1d(cnitesSNR1,cnitesSNR2)
+        elif SNRand==1:
+            goodnites1 = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1])
+            goodnites2 = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
+            cnites = np.intersect1d(goodnites1,goodnites2)
         sel1 = np.in1d(nitelist1, cnites)
         sel2 = np.in1d(nitelist2, cnites)
     else:
-        sel1, sel2,cnites = common_nites_deep(nitelist1,nitelist2,obs1,obs2,SNRsel1,SNRsel2)
+        sel1, sel2,cnites = common_nites_deep(nitelist1,nitelist2,obs1,obs2,SNRsel1,SNRsel2,SNRand)
     return sel1, sel2,cnites
 
-def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRsel2=None):
+def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRsel2=None,SNRand=0):
     sel1 = np.zeros(len(nitelist1),dtype='bool')
     sel2 = np.zeros(len(nitelist2),dtype='bool')
     cnites = np.array([])
@@ -347,7 +351,7 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
             cnites = np.union1d(cnites,cnites_intersect)
             sel1 = sel1 | np.in1d(nitelist1,cnites-lag)
             sel2 = sel2 | np.in1d(nitelist2,cnites)
-    else:
+    elif SNRand == 0: 
         for lag in [-1,0,1]:
             goodnites1 = nitelist1 if obs1 is None else (nitelist1[obs1 == 2]+lag)
             goodnites1SNR = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1]+lag)
@@ -356,6 +360,15 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
             cnitesSNR1 = np.intersect1d(goodnites1SNR,goodnites2)
             cnitesSNR2 = np.intersect1d(goodnites1,goodnites2SNR)
             cnites_intersect = np.union1d(cnitesSNR1,cnitesSNR2)
+            #cnites = np.union1d(cnites,cnites_intersect)
+            cnites = np.union1d(np.union1d(cnites,cnites_intersect),np.union1d(cnites,cnites_intersect-lag))
+            sel1 = (sel1 | np.in1d(nitelist1,cnites-lag)) & (obs1 == 2)
+            sel2 = (sel2 | np.in1d(nitelist2,cnites)) & (obs2 == 2)
+    elif SNRand == 1:
+        for lag in [-1,0,1]:
+            goodnites1SNR = nitelist1 if obs1 is None else (nitelist1[(obs1 == 2) & SNRsel1]+lag)
+            goodnites2SNR = nitelist2 if obs2 is None else (nitelist2[(obs2 == 2) & SNRsel2])
+            cnites_intersect = np.intersect1d(goodnites1SNR,goodnites2SNR)
             #cnites = np.union1d(cnites,cnites_intersect)
             cnites = np.union1d(np.union1d(cnites,cnites_intersect),np.union1d(cnites,cnites_intersect-lag))
             sel1 = (sel1 | np.in1d(nitelist1,cnites-lag)) & (obs1 == 2)
