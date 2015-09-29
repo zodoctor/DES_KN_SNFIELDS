@@ -272,8 +272,11 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
     obsband = np.zeros(nnites, dtype='int')
     obsflux = np.empty(nnites)
     obsSNR = np.empty(nnites)
+    obsZP = np.empty(nnites)
     obsField = np.empty(nnites,dtype=object)
     obsfluxcalerr = np.empty(nnites)
+    obsPSF = np.empty(nnites,dtype=float)
+    obsPHOTFLAG = np.empty(nnites,dtype=bool)
     for x, nite in enumerate(nitelist):
         nite_obs = obs[obs['MJD'].astype('int') == nite]
         det = detected(nite_obs,photprobmin)
@@ -293,6 +296,17 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
             obsfluxcalerr[x] = nite_obs[sel]['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
             obsField[x] = nite_obs[sel]['FIELD'][SNRsel][0]
+            try:
+                obsPSF[x] = nite_obs[sel]['PSF'][SNRsel][0]
+            except ValueError:
+                obsPSF[x] = 0.0
+            zpname = 'ZPFLUX'
+            try:
+                nite_obs[sel][zpname]
+            except ValueError:
+                zpname = 'ZPT'
+            obsZP[x] = nite_obs[sel][zpname][SNRsel][0]
+            obsPHOTFLAG[x] = nite_obs[sel]['PHOTFLAG'][SNRsel][0] > 1000
         else:
             obsband[x] = 1
             try:
@@ -306,7 +320,18 @@ def obsinband(obslist, band='i',zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5,
             obsfluxcalerr[x] = nite_obs['FLUXCALERR'][SNRsel][0]
             obsSNR[x] = SNRmax
             obsField[x] = nite_obs['FIELD'][SNRsel][0]
-    return (obsband, nitelist, obsflux, obsSNR,obsfluxcalerr,obsField)
+            try:
+                obsPSF[x] = nite_obs['PSF'][SNRsel][0]
+            except ValueError:
+                obsPSF[x] = 0.0
+            zpname = 'ZPFLUX'
+            try:
+                nite_obs[sel][zpname]
+            except ValueError:
+                zpname = 'ZPT'
+            obsZP[x] = nite_obs[zpname][SNRsel][0]
+            obsPHOTFLAG[x] = nite_obs['PHOTFLAG'][SNRsel][0] > 1000
+    return (obsband, nitelist, obsflux, obsSNR,obsfluxcalerr,obsField,obsPSF,obsPHOTFLAG,obsZP)
 
 def exist_deep_trigs(zobs, iobs, zMJD,iMJD):
     zcnites,icnites = common_nites(zMJD,iMJD)
@@ -377,9 +402,12 @@ def common_nites_deep(nitelist1,nitelist2,obs1=None,obs2=None,SNRsel1=None,SNRse
         
 def detected(obs,photprobmin=0.5):
     # given an observation dictionary, check if that observation counts as a detection
-    # ----------------------------------------------------------
-    sel = obs['PHOTFLAG'] > 1
+    # ---------------------------------------------------------
+    try:
+        sel = (max(obs['PHOTFLAG']) > 1000) and ((max(obs['PHOTFLAG']) & 1016) == 0)
+    except ValueError:
 
+        print obs['PHOTFLAG'], (obs['PHOTFLAG'] & 1016)
     try:
         sel = sel & (obs['PHOTPROB'] >= photprobmin)
     except ValueError:
@@ -396,14 +424,14 @@ def within_cuts(obs, zp_lower=30.5, zp_upper=34.0, zp_fwhm_lower=-.5, zp_fwhm_up
     except ValueError:
         zpname = 'ZPT'
 
-    zp_sel = (obs[zpname] > zp_lower) & (obs[zpname] < zp_upper)
-
+    #zp_sel = (obs[zpname] > zp_lower) & (obs[zpname] < zp_upper)
+    zp_sel = np.ones(len(obs), dtype='bool')
     try:
         psf_sel = (obs['PSF'] > zp_fwhm_lower) & (obs['PSF'] < zp_fwhm_upper)
     except ValueError:
         psf_sel = np.ones(len(obs), dtype='bool')
 
-    return zp_sel & psf_sel
+    return zp_sel #& psf_sel
 
 def photoZcut(headerdict,zmax=.1):
     if (float(headerdict['HOSTGAL_PHOTOZ']) > zmax):
